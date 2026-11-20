@@ -122,6 +122,9 @@ namespace McBot
         public event EventHandler SkinPicked;
 
         Card cardAi, cardChar, cardSrv;
+        InputBox Nickname;
+        FlatButton PromptBtn;
+        Label promptInfo;
         public SelectBox Provider;
         public InputBox Model, BaseUrl, ApiKey, Username, SkinPath;
         public Slider Temp;
@@ -170,12 +173,12 @@ namespace McBot
             if (usable < 620) return;
 
             int colW = (usable - gap) / 2;
-            cardAi.SetBounds(m, 12, colW, 286);
-            cardChar.SetBounds(m + colW + gap, 12, colW, 286);
+            cardAi.SetBounds(m, 12, colW, 336);
+            cardChar.SetBounds(m + colW + gap, 12, colW, 336);
             LayoutAiCard(colW);
             LayoutCharCard(colW);
 
-            int srvY = 310;
+            int srvY = 360;
             int avail = Height - srvY - 16;
             // 服务器卡片铺满剩余高度（内容超出时表格可滚轮滚动）
             int cardH = Math.Max(180, avail);
@@ -199,6 +202,10 @@ namespace McBot
 
             Temp.SetBounds(ix, 214, Math.Max(80, iw - 60), 24);
             tempVal.SetBounds(ix + iw - 48, 216, 40, 20);
+
+            Nickname.SetBounds(ix, 254, iw, 32);
+            PromptBtn.SetBounds(ix, 294, 132, 32);
+            promptInfo.SetBounds(ix + 140, 294, Math.Max(60, iw - 140), 32);
         }
 
         void LayoutCharCard(int w)
@@ -219,7 +226,7 @@ namespace McBot
             cardAi.Title = "AI 设置";
             cardAi.Subtitle = "模型接口来自 OpenAI 兼容协议";
             cardAi.Accent = T.Violet;
-            cardAi.SetBounds(24, 12, 552, 286);
+            cardAi.SetBounds(24, 12, 552, 336);
             Controls.Add(cardAi);
 
             Lbl(cardAi, "提供商", 18, 54, 88);
@@ -263,6 +270,29 @@ namespace McBot
                 ApiKey.Invalidate();
             };
             cardAi.Controls.Add(keyBtn);
+
+            Lbl(cardAi, "昵称", 18, 254, 88);
+            Nickname = new InputBox();
+            Nickname.SetBounds(112, 254, 420, 32);
+            Nickname.Inner.TextChanged += delegate { if (Cfg != null) { Cfg.character.nickname = Nickname.Text; Save(); } };
+            cardAi.Controls.Add(Nickname);
+
+            Lbl(cardAi, "提示词", 18, 294, 88);
+            PromptBtn = new FlatButton();
+            PromptBtn.Text = "编辑提示词";
+            PromptBtn.Font = T.FSmall;
+            PromptBtn.Kind = BtnKind.Ghost;
+            PromptBtn.SetBounds(112, 294, 132, 32);
+            PromptBtn.Click += delegate { EditPrompt(); };
+            cardAi.Controls.Add(PromptBtn);
+
+            promptInfo = new Label();
+            promptInfo.Text = "使用 OVO 默认人格";
+            promptInfo.Font = T.FSmall;
+            promptInfo.ForeColor = T.Muted;
+            promptInfo.BackColor = Color.Transparent;
+            promptInfo.SetBounds(252, 294, 280, 32);
+            cardAi.Controls.Add(promptInfo);
 
             Lbl(cardAi, "温度", 18, 214, 88);
             Temp = new Slider();
@@ -440,7 +470,40 @@ namespace McBot
                 Model.Text = models[i];
                 Cfg.ai.model = models[i];
             }
+
+            // 昵称按提供商给默认值（用户改过的就不动）
+            string[] nicknames = new string[] { "龙娘", "鲸鲸", "", "" };
+            string cur = Nickname.Text == null ? "" : Nickname.Text.Trim();
+            bool isDefault = cur.Length == 0 || cur == "龙娘" || cur == "鲸鲸";
+            if (isDefault)
+            {
+                Nickname.Text = nicknames[i];
+                Cfg.character.nickname = nicknames[i];
+            }
             Save();
+        }
+
+        /// <summary>编辑 AI 人格提示词</summary>
+        void EditPrompt()
+        {
+            if (Cfg == null) return;
+            string provider = Cfg.ai.provider == "deepseek" ? "DeepSeek"
+                : Cfg.ai.provider == "openai" ? "OpenAI"
+                : Cfg.ai.provider == "moonshot" ? "Moonshot" : "自定义";
+            string hint = "当前提供商：" + provider + "　留空则使用 OVO 自带人格提示词；填入后会被写入 OVO 的 profile（conversing 字段）";
+            var dlg = new PromptDialog(Cfg.ai.systemPrompt, hint);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+            Cfg.ai.systemPrompt = dlg.PromptText;
+            Save();
+            UpdatePromptInfo();
+        }
+
+        void UpdatePromptInfo()
+        {
+            if (promptInfo == null || Cfg == null) return;
+            int n = Cfg.ai.systemPrompt == null ? 0 : Cfg.ai.systemPrompt.Trim().Length;
+            promptInfo.Text = n == 0 ? "使用 OVO 默认人格" : ("已自定义 · " + n + " 字");
+            promptInfo.ForeColor = n == 0 ? T.Muted : T.Accent;
         }
 
         public void Bind(Config cfg)
@@ -454,6 +517,9 @@ namespace McBot
             ApiKey.Text = cfg.ai.apiKey;
             Temp.Value = cfg.ai.temperature;
             tempVal.Text = cfg.ai.temperature.ToString("0.0");
+
+            Nickname.Text = cfg.character.nickname == null ? "" : cfg.character.nickname;
+            UpdatePromptInfo();
 
             Username.Text = cfg.character.username;
             SkinPath.Text = cfg.character.skinPath;

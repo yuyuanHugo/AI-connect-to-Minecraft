@@ -271,6 +271,7 @@ namespace McBot
             Runtime.ResetBridge();
             // 0.1) 写入当前的回复方式与回应范围
             Runtime.WriteReplyMode(cfg.bot != null ? cfg.bot.replyMode : "whisper");
+            Runtime.WritePersona(cfg.character.nickname);
             Runtime.WriteRespondScope(cfg.bot != null && cfg.bot.whitelistEnabled, cfg.bot != null ? cfg.bot.whitelist : "");
 
             // 1) keys.json：写入 API Key（保留已有其它键）
@@ -305,7 +306,14 @@ namespace McBot
                     var p = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(prof)) as Dictionary<string, object>;
                     if (p != null)
                     {
+                        // profile.name 是 Minecraft 登录名，必须保持 ASCII（不能用昵称）
                         p["name"] = cfg.character.username;
+
+                        // 自定义人格提示词：写进 conversing，空则删掉让 OVO 用自己的默认值
+                        string prompt = cfg.ai.systemPrompt == null ? "" : cfg.ai.systemPrompt.Trim();
+                        if (prompt.Length > 0) p["conversing"] = prompt;
+                        else p.Remove("conversing");
+
                         File.WriteAllText(prof, new JavaScriptSerializer().Serialize(p), new UTF8Encoding(false));
                     }
                 }

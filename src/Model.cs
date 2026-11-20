@@ -41,12 +41,14 @@ namespace McBot
         public string username { get; set; }
         public string skinPath { get; set; }
         public string skinModel { get; set; }
+        public string nickname { get; set; }   // AI 的名字（鲸鲸 / 龙娘 …）
 
         public CharConfig()
         {
             username = "MineBot";
             skinPath = "";
             skinModel = "steve";
+            nickname = "鲸鲸";
         }
     }
 

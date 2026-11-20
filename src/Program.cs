@@ -82,7 +82,8 @@ namespace McBot
         {
             bool launch = Arg(args, "--page") == "launch";
             bool status = Arg(args, "--page") == "status";
-            bool modal = Arg(args, "--modal") == "versions";
+            string modalName = Arg(args, "--modal");
+            bool modal = modalName == "versions" || modalName == "prompt";
             string filter = Arg(args, "--filter");
 
             var form = new MainForm();
@@ -115,6 +116,25 @@ namespace McBot
             Thread.Sleep(250);
             Application.DoEvents();
 
+            if (modalName == "prompt")
+            {
+                var dlg = new PromptDialog(form.Cfg.ai.systemPrompt == null ? "" : form.Cfg.ai.systemPrompt,
+                    "当前提供商：DeepSeek　留空则使用 OVO 自带人格提示词");
+                dlg.StartPosition = FormStartPosition.Manual;
+                dlg.Location = new Point(-4000, -4000);
+                dlg.Show();
+                Application.DoEvents();
+                Thread.Sleep(200);
+                Application.DoEvents();
+                using (var bmp = new Bitmap(dlg.ClientSize.Width, dlg.ClientSize.Height))
+                {
+                    dlg.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+                    bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                File.AppendAllText(Runtime.BootLog, "shot(prompt) " + path + Environment.NewLine);
+                dlg.Close();
+                Environment.Exit(0);
+            }
             if (modal)
             {
                 var dlg = new VersionDialog(form.Cfg.client.version);

@@ -22,6 +22,7 @@ namespace McBot
             {
                 PatchAgent(Path.Combine(ovoDir, "src\\agent\\agent.js"), log);
                 PatchMindserver(Path.Combine(ovoDir, "src\\mindcraft\\mindserver.js"), log);
+                PatchPrompter(Path.Combine(ovoDir, "src\\models\\prompter.js"), log);
             }
             catch (Exception ex)
             {
@@ -266,6 +267,50 @@ namespace McBot
             }
         }
 
+        /// <summary>昵称：把提示词里的 $NAME 换成她自称的名字（登录名保持 ASCII 不变）</summary>
+        static void PatchPrompter(string path, Action<string> log)
+        {
+            if (!File.Exists(path)) return;
+            string s = File.ReadAllText(path);
+            bool changed = false;
+
+            // prompter.js 也要能读文件
+            if (!s.Contains("import * as __fs from 'fs';"))
+            {
+                int nl = s.IndexOf('\n');
+                if (nl > 0)
+                {
+                    s = s.Insert(nl + 1, "import * as __fs from 'fs';" + "\n");
+                    changed = true;
+                }
+            }
+
+            // 清掉上一版注入的「你的名字叫…」整段，避免和 $NAME 重复
+            if (s.Contains("[启动器补丁] 昵称：改自称，不动登录名"))
+            {
+                s = Regex.Replace(s,
+                    @"[ \t]*// \[启动器补丁\] 昵称：改自称，不动登录名\r?\n(?:[ \t]*[^\n]*\r?\n){0,12}?[ \t]*\} catch \(e\) \{ \}\r?\n",
+                    "");
+                changed = true;
+            }
+
+            // $NAME → 昵称（没填昵称就退回登录名）
+            string oldName = "prompt = prompt.replaceAll('$NAME', this.agent.name);";
+            if (s.Contains(oldName) && !s.Contains("__nickName"))
+            {
+                s = ReplaceFirst(s, oldName,
+                    "let __nickName = '';" + "\n" +
+                    "        try { __nickName = (__fs.readFileSync(process.cwd() + '/persona-name.txt', 'utf8') || '').trim(); } catch (e) { }" + "\n" +
+                    "        prompt = prompt.replaceAll('$NAME', __nickName || this.agent.name);");
+                changed = true;
+            }
+
+            if (changed)
+            {
+                File.WriteAllText(path, s, new UTF8Encoding(false));
+                if (log != null) log("已应用昵称补丁（提示词里的 $NAME）");
+            }
+        }
         static void PatchMindserver(string path, Action<string> log)
         {
             if (!File.Exists(path)) return;

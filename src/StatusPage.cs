@@ -264,8 +264,10 @@ namespace McBot
             avatar.Model = cfg.character.skinModel;
             avatar.Reload();
 
-            if (!inGame) nameLbl.Text = cfg.character.username + "（未启动）";
-            else nameLbl.Text = cfg.character.username;
+            string nick = cfg.character.nickname == null ? "" : cfg.character.nickname.Trim();
+            string who = nick.Length > 0 ? nick : cfg.character.username;
+            if (!inGame) nameLbl.Text = who + "（未启动）";
+            else nameLbl.Text = who;
 
             var srv = cfg.SelectedServer;
             serverLbl.Text = srv == null ? "未选择服务器" : (srv.host + ":" + srv.port + " · " + srv.version);
@@ -305,7 +307,11 @@ namespace McBot
                 healthLbl.Text = "血量 — · 饥饿 —";
                 posLbl.Text = "坐标 —";
                 Inv.SetItems(new List<string>(), new List<int>());
-                if (Cfg != null) nameLbl.Text = Cfg.character.username + "（未启动）";
+                if (Cfg != null)
+                {
+                    string nk2 = Cfg.character.nickname == null ? "" : Cfg.character.nickname.Trim();
+                    nameLbl.Text = (nk2.Length > 0 ? nk2 : Cfg.character.username) + "（未启动）";
+                }
             }
         }
 
@@ -367,7 +373,12 @@ namespace McBot
                     else if (phase == "connecting") { phaseLbl.Text = "连接中…"; phaseLbl.ForeColor = T.Warn; }
                     else { phaseLbl.Text = "离线"; phaseLbl.ForeColor = T.Muted; }
 
-                    if (Cfg != null) nameLbl.Text = nowIn ? Cfg.character.username : Cfg.character.username + "（未启动）";
+                    if (Cfg != null)
+                    {
+                        string nk = Cfg.character.nickname == null ? "" : Cfg.character.nickname.Trim();
+                        string nm = nk.Length > 0 ? nk : Cfg.character.username;
+                        nameLbl.Text = nowIn ? nm : nm + "（未启动）";
+                    }
 
                     string gm = d.ContainsKey("gameMode") && d["gameMode"] != null ? Convert.ToString(d["gameMode"]) : "";
                     string gmText = "";

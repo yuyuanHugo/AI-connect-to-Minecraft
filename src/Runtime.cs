@@ -126,6 +126,17 @@ namespace McBot
             }
             catch { }
         }
+        /// <summary>写昵称（她自称的名字），OVO 组提示词时读取</summary>
+        public static void WritePersona(string nickname)
+        {
+            try
+            {
+                Directory.CreateDirectory(OvoDir);
+                File.WriteAllText(Path.Combine(OvoDir, "persona-name.txt"), nickname == null ? "" : nickname.Trim(), new System.Text.UTF8Encoding(false));
+            }
+            catch { }
+        }
+
         /// <summary>OVO 文件桥日志（DATA| 行）</summary>
         public static string BridgeLog
         {
